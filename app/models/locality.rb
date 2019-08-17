@@ -4,8 +4,15 @@ class Locality < ApplicationRecord
   validates :lonlat, presence: true
   validates :geom, presence: true
 
-  scope :by_latitude_and_longitude, -> (latitude, longitude) {
+  scope :find_by_latitude_and_longitude, -> (latitude, longitude) {
     where("ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), localities.geom)", longitude.to_f, latitude.to_f)
+      .limit(1)
+  }
+
+  scope :closest_to, -> (latitude, longitude) {
+    where("ST_DWithin(ST_SetSRID(ST_MakePoint(?, ?), 4326), localities.geom, 1)", longitude.to_f, latitude.to_f)
+      .order("ST_Distance(localities.geom, ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326))")
+      .limit(1)
   }
   
   def self.geo_factory
@@ -21,6 +28,7 @@ class Locality < ApplicationRecord
       longitude: longitude,
       population: population,
       localized_names: localized_names,
+      properties: properties
     }
   end
 
@@ -34,8 +42,6 @@ class Locality < ApplicationRecord
       "ne:LS_NAME",
       "qs:loc",
       "qs:loc_alt",
-      "qs:al",
-      "qs:a1"
     ]
   end
 
@@ -46,7 +52,7 @@ class Locality < ApplicationRecord
       "qs_pg:name_adm1",
       "woe:name_adm1",
       "qs:a1"
-    ]).sub(/^[0-9\*]+/, '')
+    ])&.sub(/^[0-9\*]+/, '')
   end
 
   def country
@@ -99,7 +105,7 @@ class Locality < ApplicationRecord
 
   def extract_most_seen(property_keys)
     properties.values_at(*property_keys).each_with_object(Hash.new(0)) do |value, frequency|
-      frequency[value] += 1 if value.present?
+      frequency[value] += 1 if value.present? && value.to_s.length > 1
     end.to_a.max_by(&:last).try(:[], 0)
   end
 end
