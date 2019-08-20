@@ -30,25 +30,27 @@ namespace :localities do
           )
         end
       
-        multi_polygon =
+        geometry =
           if locality_info["geometry"]["type"] == "Polygon"
-            [
-              build_polygon(factory, locality_info["geometry"]["coordinates"].first, locality_info["geometry"]["coordinates"][1..-1])
-            ]
+            factory.multi_polygon(
+              [
+                build_polygon(factory, locality_info["geometry"]["coordinates"].first, locality_info["geometry"]["coordinates"][1..-1])
+              ]
+            )
           elsif locality_info["geometry"]["type"] == "MultiPolygon"
-            locality_info["geometry"]["coordinates"].map do |polygons|
-              build_polygon(factory, polygons.first, polygons[1..-1])
-            end
+            factory.multi_polygon(
+              locality_info["geometry"]["coordinates"].map do |polygons|
+                build_polygon(factory, polygons.first, polygons[1..-1])
+              end
+            )
           else
             nil
           end
         
-        if multi_polygon.present?
-          Locality.find_or_create_by(reference: locality_info["id"]) do |locality|
-            locality.properties = locality_info["properties"]
-            locality.lonlat = factory.point(locality_info["properties"]["geom:longitude"], locality_info["properties"]["geom:latitude"])
-            locality.geom = factory.multi_polygon(multi_polygon)
-          end
+        Locality.find_or_create_by(reference: locality_info["id"]) do |locality|
+          locality.properties = locality_info["properties"]
+          locality.lonlat = factory.point(locality_info["properties"]["geom:longitude"], locality_info["properties"]["geom:latitude"])
+          locality.geom = geometry
         end
       end
     end

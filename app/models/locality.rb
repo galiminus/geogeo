@@ -2,17 +2,16 @@ class Locality < ApplicationRecord
   validates :reference, presence: true
   validates :properties, presence: true
   validates :lonlat, presence: true
-  validates :geom, presence: true
-
+  validates :name, presence: true
+  validates :region, presence: true
+  validates :country, presence: true
+  
   scope :find_by_latitude_and_longitude, -> (latitude, longitude) {
-    where("ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), localities.geom)", longitude.to_f, latitude.to_f)
-      .limit(1)
+    where("localities.geom IS NOT NULL AND ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), localities.geom)", longitude.to_f, latitude.to_f)
   }
 
   scope :closest_to, -> (latitude, longitude) {
-    where("ST_DWithin(ST_SetSRID(ST_MakePoint(?, ?), 4326), localities.geom, 1)", longitude.to_f, latitude.to_f)
-      .order("ST_Distance(localities.geom, ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326))")
-      .limit(1)
+    order("localities.lonlat <-> ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326)")
   }
   
   def self.geo_factory
@@ -26,9 +25,6 @@ class Locality < ApplicationRecord
       country: country,
       latitude: latitude,
       longitude: longitude,
-      population: population,
-      localized_names: localized_names,
-      properties: properties
     }
   end
 
@@ -84,21 +80,6 @@ class Locality < ApplicationRecord
       "ne:LONGITUDE",
       "reversegeo:longitude"
     ]
-  end
-
-  def population
-    extract_most_seen [
-      "gn:population",
-      "wof:population"
-    ]
-  end
-
-  def localized_names
-    properties.select do |key, value|
-      key.match(/^name:.+_x_preferred/)
-    end.map do |key, value|
-      [key.match(/^name:(.+)_x_preferred/)[1], value.first]
-    end.to_h
   end
 
   protected
