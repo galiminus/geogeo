@@ -10,22 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_08_14_153814) do
+ActiveRecord::Schema.define(version: 2019_08_21_073255) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "postgis"
 
-  create_table "localities", force: :cascade do |t|
+  create_table "geometries", force: :cascade do |t|
     t.string "reference"
     t.json "properties"
     t.geography "lonlat", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
     t.geometry "geom", limit: {:srid=>4326, :type=>"multi_polygon"}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["geom"], name: "index_localities_on_geom", using: :gist
-    t.index ["lonlat"], name: "index_localities_on_lonlat", using: :gist
-    t.index ["reference"], name: "index_localities_on_reference"
+    t.string "type", default: "Locality", null: false
+    t.index ["geom"], name: "index_geometries_on_geom", using: :gist
+    t.index ["lonlat"], name: "index_geometries_on_lonlat", using: :gist
+    t.index ["reference"], name: "index_geometries_on_reference"
+    t.index ["type"], name: "index_geometries_on_type"
   end
 
 end

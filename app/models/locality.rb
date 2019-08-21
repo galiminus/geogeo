@@ -1,23 +1,11 @@
-class Locality < ApplicationRecord
+class Locality < Geometry
   validates :reference, presence: true
   validates :properties, presence: true
   validates :lonlat, presence: true
-  validates :name, presence: true
-  validates :region, presence: true
-  validates :country, presence: true
+  validates :name, presence: true, if: -> { region.blank? && country.blank? }
+  validates :region, presence: true, if: -> { country.blank? && name.blank? }
+  validates :country, presence: true, if: -> { region.blank? && name.blank? }
   
-  scope :find_by_latitude_and_longitude, -> (latitude, longitude) {
-    where("localities.geom IS NOT NULL AND ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), localities.geom)", longitude.to_f, latitude.to_f)
-  }
-
-  scope :closest_to, -> (latitude, longitude) {
-    order("localities.lonlat <-> ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326)")
-  }
-  
-  def self.geo_factory
-    @geo_factory ||= RGeo::Geographic.spherical_factory(srid: 4326, uses_lenient_assertions: true)
-  end
-
   def as_json(options = {})
     {
       name: name,
@@ -38,6 +26,7 @@ class Locality < ApplicationRecord
       "ne:LS_NAME",
       "qs:loc",
       "qs:loc_alt",
+      -> { properties['name:eng_x_preferred'].try(:[], 0) }
     ]
   end
 
@@ -52,14 +41,24 @@ class Locality < ApplicationRecord
   end
 
   def country
-    extract_most_seen [
-      "ne:ADM0NAME",
-      "ne:UN_ADM0",
-      "qs:a0",
-      "qs:adm0",
-      "qs_pg:name_adm0",
-      "woe:name_adm0"
-    ]
+    country_from_iso = ISO3166::Country.new(properties['iso:country'])
+
+    if country_from_iso.present?
+      country_from_iso.translations['en']
+    else
+      extract_most_seen [
+        "ne:ADM0NAME",
+        "ne:UN_ADM0",
+        "qs:a0",
+        "qs:adm0",
+        "qs_pg:name_adm0",
+        "woe:name_adm0",
+        -> {
+          Country.find_by_latitude_and_longitude(latitude, longitude).limit(1).first&.name ||
+             Country.closest_to(latitude, longitude).limit(1).first&.name
+        }
+      ]
+    end
   end
 
   def latitude
@@ -82,11 +81,13 @@ class Locality < ApplicationRecord
     ]
   end
 
-  protected
+  def self.best_matches(latitude, longitude)
+    locality_within = Locality.find_by_latitude_and_longitude(latitude, longitude)
 
-  def extract_most_seen(property_keys)
-    properties.values_at(*property_keys).each_with_object(Hash.new(0)) do |value, frequency|
-      frequency[value] += 1 if value.present? && value.to_s.length > 1
-    end.to_a.max_by(&:last).try(:[], 0)
+    if locality_within.present?
+      locality_within
+    else
+      Locality.closest_to(latitude, longitude)
+    end
   end
 end
