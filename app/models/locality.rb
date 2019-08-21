@@ -41,18 +41,8 @@ class Locality < Geometry
   end
 
   def country
-    extract_most_seen [
-      "ne:ADM0NAME",
-      "ne:UN_ADM0",
-      "qs:a0",
-      "qs:adm0",
-      "qs_pg:name_adm0",
-      "woe:name_adm0",
-      -> {
-        Country.find_by_latitude_and_longitude(latitude, longitude).limit(1).first&.name ||
-          Country.closest_to(latitude, longitude).limit(1).first&.name
-      }
-    ]
+    Country.find_by_latitude_and_longitude(latitude, longitude).limit(1).first&.name ||
+      Country.closest_to(latitude, longitude).limit(1).first&.name
   end
 
   def latitude
