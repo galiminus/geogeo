@@ -35,6 +35,4 @@ class Geometry < ApplicationRecord
       nil
     end
   end
-
-
 end
