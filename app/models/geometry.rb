@@ -29,7 +29,7 @@ class Geometry < ApplicationRecord
         properties[property_key]
       end
     
-    if value.present? && (value.kind_of?(Numeric) || (value.to_s.length > 1 && value.to_s.match(/\p{Latin}/)))
+    if value.present? && (value.kind_of?(Numeric) || value.to_s.length > 1)
       value
     else
       nil
