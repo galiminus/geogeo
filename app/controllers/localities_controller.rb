@@ -3,7 +3,7 @@ class LocalitiesController < ApplicationController
     if params[:latitude].blank? || params[:longitude].blank?
       render json: { error: "Required parameters: latitude, longitude" }, status: :not_acceptable
     else
-      render json: Locality.best_matches(params[:latitude], params[:longitude]).limit(1).first
+      render json: Locality.best_match(params[:latitude], params[:longitude])
     end
   end
 end

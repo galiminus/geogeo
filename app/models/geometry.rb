@@ -1,4 +1,7 @@
 class Geometry < ApplicationRecord
+  before_save :set_cached_name
+  before_save :set_cached_hierarchy
+
   scope :find_by_latitude_and_longitude, -> (latitude, longitude) {
     where("geometries.geom IS NOT NULL AND ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), geometries.geom)", longitude.to_f, latitude.to_f)
   }
@@ -11,6 +14,22 @@ class Geometry < ApplicationRecord
     @geo_factory ||= RGeo::Geographic.spherical_factory(srid: 4326, uses_lenient_assertions: true)
   end
 
+  def set_cached_name
+    self.cached_name = self.name
+  end
+
+  def set_cached_hierarchy
+    self.cached_hierarchy = []
+  end
+
+  def region
+    @region ||= Region.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "region_id"))
+  end
+
+  def country
+    @country ||= Country.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "country_id"))
+  end
+  
   protected
   
   def extract_most_seen(property_keys)

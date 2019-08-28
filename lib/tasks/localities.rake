@@ -4,11 +4,11 @@ namespace :localities do
   task import_wof: :environment do
     {
       Country => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-country-latest.tar.bz2",
-#      Locality => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-locality-1541017474.tar.bz2"
+      Region => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-region-latest.tar.bz2",
+      Locality => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-locality-1541017474.tar.bz2",
     }.each do |model, url|
       Dir.mktmpdir do |wdir|
         puts "Download locality information"
-        #      system("curl -s https://dist.whosonfirst.org/bundles/whosonfirst-data-locality-1541017474.tar.bz2 -o #{wdir}/localities.tar.bz2")
         system("curl -s #{url} -o #{wdir}/localities.tar.bz2")
         
         puts "Extract to #{wdir}"

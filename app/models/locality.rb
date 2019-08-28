@@ -2,17 +2,19 @@ class Locality < Geometry
   validates :reference, presence: true
   validates :properties, presence: true
   validates :lonlat, presence: true
-  validates :name, presence: true, if: -> { region.blank? && country.blank? }
-  validates :region, presence: true, if: -> { country.blank? && name.blank? }
-  validates :country, presence: true, if: -> { region.blank? && name.blank? }
+  validates :name, presence: true
+
+  before_save :set_cached_hierarchy
+
+  def set_cached_hierarchy
+    self.cached_hierarchy = [country&.cached_name, region&.cached_name]
+  end
   
   def as_json(options = {})
     {
-      name: name,
-      region: region,
-      country: country,
-      latitude: latitude,
-      longitude: longitude,
+      name: cached_name,
+      region: cached_hierarchy[0],
+      country: cached_hierarchy[1],
     }
   end
 
@@ -30,48 +32,13 @@ class Locality < Geometry
     ]
   end
 
-  def region
-    extract_most_seen([
-      "ne:ADM1NAME",
-      "qs:a1r",
-      "qs_pg:name_adm1",
-      "woe:name_adm1",
-      "qs:a1"
-    ])&.sub(/^[0-9\*]+/, '')
-  end
-
-  def country
-    Country.find_by_latitude_and_longitude(latitude, longitude).limit(1).first&.name ||
-      Country.closest_to(latitude, longitude).limit(1).first&.name
-  end
-
-  def latitude
-    extract_most_seen [
-      "lbl:latitude",
-      "mps:latitude",
-      "geom:latitude",
-      "ne:LATITUDE",
-      "reversegeo:latitude"
-    ]
-  end
-
-  def longitude
-    extract_most_seen [
-      "lbl:longitude",
-      "mps:longitude",
-      "geom:longitude",
-      "ne:LONGITUDE",
-      "reversegeo:longitude"
-    ]
-  end
-
-  def self.best_matches(latitude, longitude)
-    locality_within = Locality.find_by_latitude_and_longitude(latitude, longitude)
+  def self.best_match(latitude, longitude)
+    locality_within = Locality.select(:cached_name, :cached_hierarchy).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
 
     if locality_within.present?
       locality_within
     else
-      Locality.closest_to(latitude, longitude)
+      Locality.select(:cached_name, :cached_hierarchy).closest_to(latitude, longitude).limit(1).first
     end
   end
 end
