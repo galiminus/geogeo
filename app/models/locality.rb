@@ -13,8 +13,8 @@ class Locality < Geometry
   def as_json(options = {})
     {
       name: cached_name,
-      region: cached_hierarchy[0],
-      country: cached_hierarchy[1],
+      region: cached_hierarchy[1],
+      country: cached_hierarchy[0],
     }
   end
 
