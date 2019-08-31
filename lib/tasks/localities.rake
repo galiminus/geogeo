@@ -5,7 +5,7 @@ namespace :localities do
     {
       Country => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-country-latest.tar.bz2",
       Region => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-region-latest.tar.bz2",
-      Locality => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-locality-1541017474.tar.bz2",
+      Locality => "https://geogeo-data.s3-eu-west-1.amazonaws.com/whosonfirst-data-locality-latest.tar.bz2",
     }.each do |model, url|
       Dir.mktmpdir do |wdir|
         puts "Download locality information"
