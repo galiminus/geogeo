@@ -1,6 +1,28 @@
 class Geometry < ApplicationRecord
+  GEOMETRY_CONTAINERS = %w{region macro_region county country empire}
+
+  validates :reference, presence: true
+  validates :properties, presence: true
+  validates :lonlat, presence: true
+  validates :name, presence: true
+
   before_save :set_cached_name
   before_save :set_cached_hierarchy
+
+  def set_cached_hierarchy
+    self.cached_hierarchy = GEOMETRY_CONTAINERS.map do |geometry|
+      [geometry, send(geometry)&.cached_name]
+    end.select do |geometry, name|
+      name.present?
+    end.to_h
+  end
+
+  def as_json(options = {})
+    {
+      name: cached_name,
+      hierarchy: cached_hierarchy,
+    }
+  end
 
   scope :find_by_latitude_and_longitude, -> (latitude, longitude) {
     where("geometries.geom IS NOT NULL AND ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), geometries.geom)", longitude.to_f, latitude.to_f)
@@ -9,7 +31,7 @@ class Geometry < ApplicationRecord
   scope :closest_to, -> (latitude, longitude) {
     order("geometries.lonlat <-> ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326)")
   }
-  
+
   def self.geo_factory
     @geo_factory ||= RGeo::Geographic.spherical_factory(srid: 4326, uses_lenient_assertions: true)
   end
@@ -18,20 +40,30 @@ class Geometry < ApplicationRecord
     self.cached_name = self.name
   end
 
-  def set_cached_hierarchy
-    self.cached_hierarchy = []
+  GEOMETRY_CONTAINERS.each do |geometry|
+    define_method geometry do
+      geometry.classify.constantize.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "#{geometry}_id"))
+    end
   end
 
-  def region
-    @region ||= Region.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "region_id"))
+  def name
+    extract_most_seen [
+      "wof:name"
+    ]
   end
 
-  def country
-    @country ||= Country.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "country_id"))
+  def self.best_match(latitude, longitude)
+    locality_within = self.select(:cached_name, :cached_hierarchy).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
+
+    if locality_within.present?
+      locality_within
+    else
+      self.select(:cached_name, :cached_hierarchy).closest_to(latitude, longitude).limit(1).first
+    end
   end
-  
+
   protected
-  
+
   def extract_most_seen(property_keys)
     property_keys.map do |property_key|
       extract_value(property_key)
@@ -47,7 +79,7 @@ class Geometry < ApplicationRecord
       else
         properties[property_key]
       end
-    
+
     if value.present? && (value.kind_of?(Numeric) || value.to_s.length > 1)
       value
     else

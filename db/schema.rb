@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_08_28_170654) do
+ActiveRecord::Schema.define(version: 2019_09_09_134046) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -25,7 +25,7 @@ ActiveRecord::Schema.define(version: 2019_08_28_170654) do
     t.datetime "updated_at", null: false
     t.string "type", default: "Locality", null: false
     t.string "cached_name"
-    t.string "cached_hierarchy", default: [], array: true
+    t.jsonb "cached_hierarchy", default: {}
     t.index ["geom"], name: "index_geometries_on_geom", using: :gist
     t.index ["lonlat"], name: "index_geometries_on_lonlat", using: :gist
     t.index ["reference"], name: "index_geometries_on_reference"
