@@ -1,5 +1,11 @@
 class Geometry < ApplicationRecord
-  GEOMETRY_CONTAINERS = %w{region macro_region county country empire}
+  GEOMETRY_CONTAINERS = {
+    region: Region,
+    macroregion: MacroRegion,
+    county: County,
+    country: Country,
+    empire: Empire
+  }
 
   validates :reference, presence: true
   validates :properties, presence: true
@@ -10,7 +16,7 @@ class Geometry < ApplicationRecord
   before_save :set_cached_hierarchy
 
   def set_cached_hierarchy
-    self.cached_hierarchy = GEOMETRY_CONTAINERS.map do |geometry|
+    self.cached_hierarchy = GEOMETRY_CONTAINERS.map do |geometry, _|
       [geometry, send(geometry)&.cached_name]
     end.select do |geometry, name|
       name.present?
@@ -19,6 +25,7 @@ class Geometry < ApplicationRecord
 
   def as_json(options = {})
     {
+      reference: reference,
       name: cached_name,
       hierarchy: cached_hierarchy,
     }
@@ -40,9 +47,9 @@ class Geometry < ApplicationRecord
     self.cached_name = self.name
   end
 
-  GEOMETRY_CONTAINERS.each do |geometry|
+  GEOMETRY_CONTAINERS.each do |geometry, klass|
     define_method geometry do
-      geometry.classify.constantize.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "#{geometry}_id"))
+      klass.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "#{geometry}_id"))
     end
   end
 
@@ -53,12 +60,12 @@ class Geometry < ApplicationRecord
   end
 
   def self.best_match(latitude, longitude)
-    locality_within = self.select(:cached_name, :cached_hierarchy).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
+    locality_within = self.select(:cached_name, :cached_hierarchy, :reference).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
 
     if locality_within.present?
       locality_within
     else
-      self.select(:cached_name, :cached_hierarchy).closest_to(latitude, longitude).limit(1).first
+      self.select(:cached_name, :cached_hierarchy, :reference).closest_to(latitude, longitude).limit(1).first
     end
   end
 

@@ -65,11 +65,13 @@ namespace :localities do
   end
 
   task update_cache: :environment do
+    names_by_reference = Geometry.pluck(:reference, :cached_name).to_h
     Geometry.select(:id, :cached_hierarchy,  "properties->'wof:hierarchy' AS hierarchy").find_each do |geometry|
-      next if geometry.hierarchy.count == 0 || geometry.cached_hierarchy.count > 0
+      next if geometry.hierarchy.count == 0
 
-      cached_hierarchy = Geometry::GEOMETRY_CONTAINERS.map do |geometry_container|
-        [geometry_container, Geometry.select(:cached_name).find_by(reference: geometry.hierarchy.first["#{geometry_container}_id"])&.cached_name]
+      cached_hierarchy = Geometry::GEOMETRY_CONTAINERS.map do |geometry_container, _|
+        reference = geometry.hierarchy&.first.try(:[], "#{geometry_container}_id")
+        [geometry_container, names_by_reference[reference.to_s]]
       end.select do |geometry, name|
         name.present?
       end.to_h
