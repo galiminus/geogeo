@@ -1,10 +1,10 @@
 class Geometry < ApplicationRecord
   GEOMETRY_CONTAINERS = {
-    region: Region,
-    macroregion: MacroRegion,
-    county: County,
-    country: Country,
-    empire: Empire
+    region: "Region",
+    macroregion: "MacroRegion",
+    county: "County",
+    country: "Country",
+    empire: "Empire"
   }
 
   validates :reference, presence: true
@@ -49,7 +49,7 @@ class Geometry < ApplicationRecord
 
   GEOMETRY_CONTAINERS.each do |geometry, klass|
     define_method geometry do
-      klass.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "#{geometry}_id"))
+      klass.constantize.select(:cached_name).find_by(reference: properties["wof:hierarchy"]&.first.try(:[], "#{geometry}_id"))
     end
   end
 
