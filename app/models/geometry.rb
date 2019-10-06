@@ -35,6 +35,11 @@ class Geometry < ApplicationRecord
     where("geometries.geom IS NOT NULL AND ST_Within(ST_SetSRID(ST_MakePoint(?, ?), 4326), geometries.geom)", longitude.to_f, latitude.to_f)
   }
 
+  scope :closest_to_boundary, -> (latitude, longitude) {
+    where("geometries.geom IS NOT NULL AND ST_DWithin(ST_SetSRID(ST_MakePoint(?, ?), 4326), geometries.geom, 1)", longitude.to_f, latitude.to_f)
+      .order("geometries.geom <-> ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326)")
+  }
+
   scope :closest_to, -> (latitude, longitude) {
     order("geometries.lonlat <-> ST_SetSRID(ST_MakePoint(#{Arel.sql(longitude.to_f.to_s)}, #{Arel.sql(latitude.to_f.to_s)}), 4326)")
   }
@@ -61,12 +66,12 @@ class Geometry < ApplicationRecord
 
   def self.best_match(latitude, longitude)
     locality_within = self.select(:cached_name, :cached_hierarchy, :reference).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
+    return locality_within if locality_within.present?
 
-    if locality_within.present?
-      locality_within
-    else
-      self.select(:cached_name, :cached_hierarchy, :reference).closest_to(latitude, longitude).limit(1).first
-    end
+    locality_closest = self.select(:cached_name, :cached_hierarchy, :reference).closest_to_boundary(latitude, longitude).limit(1).first
+    return locality_closest if locality_closest.present?
+
+    self.select(:cached_name, :cached_hierarchy, :reference).closest_to(latitude, longitude).limit(1).first
   end
 
   protected
