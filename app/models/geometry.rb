@@ -28,6 +28,8 @@ class Geometry < ApplicationRecord
       reference: reference,
       name: cached_name,
       hierarchy: cached_hierarchy,
+      latitude: lonlat.latitude,
+      longitude: lonlat.longitude,
     }
   end
 
@@ -71,7 +73,7 @@ class Geometry < ApplicationRecord
     locality_closest = self.select(:cached_name, :cached_hierarchy, :reference).closest_to_boundary(latitude, longitude).limit(1).first
     return locality_closest if locality_closest.present?
 
-    self.select(:cached_name, :cached_hierarchy, :reference).closest_to(latitude, longitude)
+    self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).closest_to(latitude, longitude)
   end
 
   def self.best_matches_by_name(name)
@@ -79,7 +81,7 @@ class Geometry < ApplicationRecord
 
     self
       .where("to_tsvector('english', geometries.cached_hierarchy) @@ #{sanitized}")
-      .select(:cached_name, :cached_hierarchy, :reference)
+      .select(:cached_name, :cached_hierarchy, :reference, :lonlat)
   end
 
   protected
