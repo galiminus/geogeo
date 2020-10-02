@@ -64,14 +64,22 @@ class Geometry < ApplicationRecord
     ]
   end
 
-  def self.best_match(latitude, longitude)
+  def self.best_matches_by_location(latitude, longitude)
     locality_within = self.select(:cached_name, :cached_hierarchy, :reference).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
     return locality_within if locality_within.present?
 
     locality_closest = self.select(:cached_name, :cached_hierarchy, :reference).closest_to_boundary(latitude, longitude).limit(1).first
     return locality_closest if locality_closest.present?
 
-    self.select(:cached_name, :cached_hierarchy, :reference).closest_to(latitude, longitude).limit(1).first
+    self.select(:cached_name, :cached_hierarchy, :reference).closest_to(latitude, longitude)
+  end
+
+  def self.best_matches_by_name(name)
+    sanitized = sanitize_sql_array(["to_tsquery('english', ?)", name.gsub(/\s/,"+")])
+
+    self
+      .where("to_tsvector('english', geometries.cached_hierarchy) @@ #{sanitized}")
+      .select(:cached_name, :cached_hierarchy, :reference)
   end
 
   protected
