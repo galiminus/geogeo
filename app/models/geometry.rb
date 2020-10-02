@@ -67,10 +67,10 @@ class Geometry < ApplicationRecord
   end
 
   def self.best_matches_by_location(latitude, longitude)
-    locality_within = self.select(:cached_name, :cached_hierarchy, :reference).find_by_latitude_and_longitude(latitude, longitude).limit(1).first
+    locality_within = self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).find_by_latitude_and_longitude(latitude, longitude)
     return locality_within if locality_within.present?
 
-    locality_closest = self.select(:cached_name, :cached_hierarchy, :reference).closest_to_boundary(latitude, longitude).limit(1).first
+    locality_closest = self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).closest_to_boundary(latitude, longitude)
     return locality_closest if locality_closest.present?
 
     self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).closest_to(latitude, longitude)
