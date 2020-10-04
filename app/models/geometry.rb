@@ -7,6 +7,10 @@ class Geometry < ApplicationRecord
     empire: "Empire"
   }
 
+  SELECTED_ATTRIBUTES = [
+    :cached_name, :cached_hierarchy, :cached_area, :reference, :lonlat
+  ]
+
   validates :reference, presence: true
   validates :properties, presence: true
   validates :lonlat, presence: true
@@ -27,6 +31,7 @@ class Geometry < ApplicationRecord
     {
       reference: reference,
       name: cached_name,
+      area: cached_area,
       hierarchy: cached_hierarchy,
       latitude: lonlat.latitude,
       longitude: lonlat.longitude,
@@ -66,14 +71,18 @@ class Geometry < ApplicationRecord
     ]
   end
 
+  def self.find_by_reference(reference)
+    self.select(SELECTED_ATTRIBUTES).find_by(reference: reference)
+  end
+
   def self.best_matches_by_location(latitude, longitude)
-    locality_within = self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).find_by_latitude_and_longitude(latitude, longitude)
+    locality_within = self.select(SELECTED_ATTRIBUTES).find_by_latitude_and_longitude(latitude, longitude)
     return locality_within if locality_within.present?
 
-    locality_closest = self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).closest_to_boundary(latitude, longitude)
+    locality_closest = self.select(SELECTED_ATTRIBUTES).closest_to_boundary(latitude, longitude)
     return locality_closest if locality_closest.present?
 
-    self.select(:cached_name, :cached_hierarchy, :reference, :lonlat).closest_to(latitude, longitude)
+    self.select(SELECTED_ATTRIBUTES).closest_to(latitude, longitude)
   end
 
   def self.best_matches_by_name(name)
@@ -81,7 +90,7 @@ class Geometry < ApplicationRecord
 
     self
       .where("to_tsvector('english', geometries.cached_hierarchy) @@ #{sanitized}")
-      .select(:cached_name, :cached_hierarchy, :reference, :lonlat)
+      .select(SELECTED_ATTRIBUTES)
   end
 
   protected

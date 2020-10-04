@@ -1,4 +1,8 @@
 class LocalitiesController < ApplicationController
+  def show
+    render json: Locality.find_by_reference(params[:id])
+  end
+
   def index
     if params[:latitude].blank? || params[:longitude].blank?
       render json: { error: "Required parameters: latitude, longitude" }, status: :not_acceptable
@@ -21,7 +25,13 @@ class LocalitiesController < ApplicationController
         scope = scope.best_matches_by_location(params[:latitude], params[:longitude])
       end
 
-      render json: scope.limit(25)
+      if params[:order] == 'area_desc'
+        scope.order(:area_desc)
+      end
+
+      limit = (params[:limit] || 30).to_i
+
+      render json: scope.limit(limit > 100 ? 100 : limit)
     end
   end
 end
