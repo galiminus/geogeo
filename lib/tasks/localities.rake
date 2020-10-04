@@ -78,4 +78,10 @@ namespace :localities do
       geometry.update_column(:cached_hierarchy, cached_hierarchy)
     end
   end
+
+  task update_cached_areas: :environment do
+    Geometry.select(:id, :properties).find_each do |geometry|
+      geometry.update_column(:cached_area, geometry.properties["geom:area"])
+    end
+  end
 end
